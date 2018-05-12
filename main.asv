@@ -1,0 +1,25 @@
+clear; 
+close all;
+
+% Environment initialization
+cb_size = 8; % codebook size
+filename = 'images/land_2.jpg';
+
+info = imfinfo(filename);
+width = info.Width;
+height = info.Height;
+
+image = imread(filename);
+
+%% Codebook and distortion  value initialization initialization
+x = reshape(image,[], 3);
+%y = 0.3*x(:,1) + 0.59*x(:,2) + 0.11*x(:,3); % NTSC luminance
+codebook = uint8(round(mean(x)));
+idx = ones(width*height,1);
+dist_vec = distortion(x,codebook,idx);
+
+
+codebook(2,:) = mod(codebook+10,255);
+
+
+[dist_vec, idx] = distortion(codebook, x, dist_vec, idx);
