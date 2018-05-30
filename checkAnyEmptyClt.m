@@ -1,11 +1,16 @@
-function clt = checkAnyEmptyClt(idx,cb_dim)
+function [counter, anyEmpty, clt] = checkAnyEmptyClt(idx)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
-clt = 0;
-for i=1:cb_dim
-    if nnz(idx == i) == 0
-        clt = i;
-    end
+
+anyEmpty = false;
+clt_info = tabulate(idx);
+counter = clt_info(:,2);
+%counter = histcounts(idx,cb_size);
+clt = find(counter == 0);
+if clt ~= 0
+    clt = clt(1,1); % it may happen that more than one cluster is empty, so I pick the first
+    anyEmpty = true;
 end
+
 end
 
