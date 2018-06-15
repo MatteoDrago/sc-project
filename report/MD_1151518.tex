@@ -2,10 +2,8 @@
 %	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass{article}
-
+\documentclass{report}
 \usepackage[english]{babel}
-
 \usepackage[utf8]{inputenc}
 \usepackage{fancyhdr} % Required for custom headers
 \usepackage{lastpage} % Required to determine the last page for the footer
@@ -16,19 +14,11 @@
 \usepackage{amsfonts,amsmath,amssymb,amsthm}
 \usepackage{array, hhline} % Table visual improvements
 \usepackage{multirow}
+
 % block diagrams
 \usepackage{tikz,textcomp}
 \usetikzlibrary{shapes,arrows,matrix,fit}
 \usetikzlibrary{circuits.ee.IEC}
-
-% matlab2tikz
-\usepackage{pgfplots}
-\pgfplotsset{compat=newest}
-%% the following commands are needed for some matlab2tikz features
-\usetikzlibrary{plotmarks}
-\usetikzlibrary{arrows.meta}
-\usepgfplotslibrary{patchplots}
-%\usepackage{grffile}
 
 
 % Margins
@@ -40,6 +30,8 @@
 \headsep=0.25in 
 
 \linespread{1.1} % Line spacing
+
+\def\code#1{\texttt{#1}}
 
 % Set up the header and footer
 \pagestyle{fancy}
@@ -96,7 +88,7 @@
 %	NAME AND CLASS SECTION
 %----------------------------------------------------------------------------------------
 
-\newcommand{\hmwkTitle}{Project Course} % Assignment title
+\newcommand{\hmwkTitle}{Final Course Project} % Assignment title
 \newcommand{\hmwkClass}{Source Coding} % Course/class
 \newcommand{\hmwkAuthorName}{Matteo Drago - 1151518} % Your name
 \newcommand{\hmwkClassInstructor}{Giancarlo Calvagno} % Teacher/lecturer
@@ -112,26 +104,101 @@
 \vspace{3in}
 }
 \author{\textbf{\hmwkAuthorName}}
-\date{} % Insert date here if you want it to appear below your name
+\date{$8^{th}$ June 2018} % Insert date here if you want it to appear below your name
 
 %----------------------------------------------------------------------------------------
 
 
 \maketitle
 \pagenumbering{gobble} % Used to delete the page number on the title page
-
-
-\clearpage
 \pagenumbering{arabic} % Used to reset the page number after the title page
 \setcounter{page}{1}
 
-\section{Introduction}
+\section{Abstract}
+For this project I was assigned to build \textit{coding} and \textit{decoding} procedures for static color images by means of vector quantization. In order to do this I have to implement a vector quantizer using the \textit{Linde Buzo Gray} algorithm in the split version; the rate \textit{R} will be of 8 bit/pixel for vectors of size \textit{L} = 3, where the three components are the (R,G,B) or the (Y,U,V) representation of the color image at 8x3 bit/pixel.
 
-\section{Problem 2}
+In the following, after a brief theory overview and the description of the design of the algorithm, I will compare the performance in terms of distortion and PSNR with respect to the results obtained with the JPEG standard.
 
-\section{Problem 3}
+\section{Data Compression}
+The two main components that defines a compression systems are:
+\begin{itemize}
+	\item the \textit{encoder} which takes as input the message $\mathcal{A}$ (which could be text, image or audio) and produces its coded version, $\mathcal{A}'$;
+	\item the \textit{decoder} which, upon receiving $\mathcal{A}'$ tries to reconstruct the original message $\mathcal{A}$.
+\end{itemize}   
+Of course the type of compression changes based on the technique that we use to design our encoder/decoder pair; we speak of \textbf{lossless} compression when the decoder is able to perfectly reconstruct the message $\mathcal{A}$ from $\mathcal{A}'$. On the other hand, if we want to achieve an higher level of compression we have to trade off on the quality of the reconstruction at the receiver side; in this case we speak of \textbf{lossy} compression, when the receiver is not able to perfectly reconstruct the original message $\mathcal{A}$, but it provides one version at a lower quality.
 
-\section{Problem 4}
+While for the lossless compression we evaluate the performances just in terms of \textbf{rate} (i.e. the average number of bits used to represent each sample value), in the lossy scenario we need also to evaluate how much the received message differs from the original one: this metric is called \textbf{distortion}. The relation between these two metrics is described with the \textit{rate-distortion} theory, a set of rules and guidelines that let us determines, for example, the amount of rate that we can guarantee to the system without exceeding a certain amount of distortion.
 
-\section{Problem 5}
+But how can we actually measure distortion? First, we can use the \textit{squared error} between the input sequence \textit{x} and the reconstructed one \textit{y} defined as $(x-y)^2$ or we can use the \textit{absolute difference} defined as $|x-y|$. In general, however, average measures are more informative and useful, so we define the \textit{mean squared error} as: 
+\begin{equation}
+\sigma^2_d = \frac{1}{N} \sum_{n = 1}^{N} (x_n - y_n)^2
+\end{equation}
+which is use also to evaluate another useful metric, the \textit{signal-to-noise ratio}:
+\begin{equation}
+SNR(dB) = 10log_{10}\frac{\sigma^2_x}{\sigma^2_d} 
+\end{equation}
+where $\sigma^2_x$ is the average squared value of the original message. In the image processing domain there's another important quantity related to the \textit{mse}, which is the \textit{peak-signal-to-noise ratio} defined as: 
+\begin{equation}
+PSNR(dB) = 10log_{10}\frac{x^2_{peak}}{\sigma^2_d} 
+\end{equation}
+where $x_{peak}$ is the peak value assumed by the original signal. In the comparison of the different techniques I will use these measures in order to quantify the quality of one method with respect to the other.
+
+We can categorize our compression systems with respect to the type of quantization they implement: \textbf{scalar} or \textbf{vector} quantization. Using the first one, we have to code one source symbol at a time, while with the second one we code groups of symbols altogether, with the advantage of obtaining a lower distortion for a given rate (or viceversa, a lower rate for a given distortion). As I outlined in the introduction, for this project I focused on designing a version of the \textbf{LBG} algorithm, which finds a set of representative L-dimensional vectors which made up the \textit{codebook} for our vector quantizer. Once the codebook is complete, it has to be stored both at the encoder and at the decoder side; in this way, the task of the encoder is just that of finding the closest code-vector to the pixels and to assign to each pixel the corresponding index of word in the codebook; then, we send through the channel the list of indexes and, once received, the decoder has to do just a table look-up in order to convert the indexes again in the corresponding pixel values.
+
+\section{The Linde-Buzo-Gray algorithm}
+
+Before delving into details, I would like to highlight that we are interest in the \textbf{codebook}: all the computational efforts are concentrated in finding the optimal set of L-vectors that minimize the distortion at the receiver, for a given rate \textbf{R}.
+
+One way of implementing the procedure is firstly to assume the distribution function of the input data $f_X(x)$ as known; then, after a suitable initialization of the codebook, we compute the optimal partition of signal samples $ x \in \mathbb{R}^L$. After that we recompute the codebook using our knowledge of $f_X(x)$ and evaluate the distortion $D^{(n)}$, where n indicates the iteration number. We iterate this procedure until the stopping condition is met, which is: 
+\begin{equation}
+\frac{D^{(n-1)} - D^{(n)}}{D^{(n)}} < \epsilon
+\end{equation}
+where $\epsilon$ is an arbitrary small design parameter. Note that this algorithm guarantee that the distortion \textbf{never increases}, even if it may not be globally minimized.
+Looking at the algorithm, we can notice that there are several similarities with the Lloyd's procedure [ref], used in pattern recognition when we want to subdivide a dataset of points into \textit{k} representative clusters (and in our case the codebook represents the set of centres of different clusters). As for the Lloyd's algorithm, also in our case the initialization of the codebook is fundamental in order to guarantee that the algorithm converges to an optimum in considerably less iterations and so computational efforts (for Lloyd's initialization, see \textit{kmeans++} [ref]). In past years several techniques were implemented with the aim of optimizing this computation; in the following I will focus on the \textbf{splitting technique}, which is the one that I had to implement for the project. Given that in this case the probability distribution function is not known a-priori, the initial algorithm described above needs a slight change: 
+
+\begin{enumerate}
+	\item Start from a codebook of size K. Set $n = 1$ and $ D^{(0)} = \infty $. Assign a suitable value to $\epsilon$; %\textbf{In this case all pixels are represented by this codeword}; 
+	\item Partition the dataset with respect to the codebook: to each pixel is assigned the nearest codeword;
+	\item Compute the new codewords as centroids of the clusters:
+	\begin{equation}
+	c_i^{(n)} = \frac{1}{|C_i^{(n)}|} \sum_{x \in C_i^{(n)}} x \quad i = 1,...,K
+	\end{equation}
+	\item Evaluate the new distortion value:
+	\begin{equation}
+	D^{(n)} = \frac{1}{|\mathcal{P}|} \sum_{x \in \mathcal{P}} ||x - c_x^{(n)}||_2^2
+	\end{equation}
+	where $c_x^{(n)}$ is the codeword assigned to the pixel x a the n-th iteration.
+	\item If the termination condition described in (4) is met, the computation stops, otherwise increase \textit{n} by one and return to step 2.
+\end{enumerate}
+
+The splitting technique introduces another peculiar characteristic to the algorithm: we start with a codebook of size 1, where the same codeword is assigned to each pixel. Then, the second codeword is obtained as $ c_2 = c_1 + \delta$ and we apply LBG to the new codebook; when it finishes, we can double the size of the codebook applying $c_{2i} = c_i + \delta$. We iterate this procedure until we reach the desired dimension for the codebook (of course we can also obtained set of codewords of odd dimensions, by simply deciding how many additional codewords to create). The desirable feature of this technique is that it guarantees that at each iteration we start with the optimal version of the codebook (because LBG guarantees optimality).
+
+\section{MATLAB implementation}
+In order to develop the end-to-end environment, I wrote one main script \code{main.m} and three distinct auxiliary functions. In the design of the algorithm there were different issues to be addressed; first of all, the well-known \textbf{empty cell} problem. It may happen that, at some point of LBG, one codeword has no pixels assigned to it: its cluster is empty and this means that it doesn't approximate well enough any of the pixels of the image. In particular, in MATLAB I had to avoid this condition because when trying to compute the "average" codeword of the cluster the result were triplets of \code{NaN}.
+
+That's the reason why I wrote \code{checkAnyEmptyClt.m}: this routine checks if one or more clusters are empty during a particular iteration. However, this checking operation takes time if not properly optimized: I tested different solutions but in the end I opted for the MATLAB function \code{tabulate}, which takes as input a column array of size \textit{width*length} (parameters of the input image), where each position represents one pixel of the image and each pixel is represented as the index of the respective codeword in the codebook; the output gives the complete information of how the array is populated so, after few adjustments, the function returns the \textbf{first} index of empty cluster on the list. 
+
+After that, the correspondent codeword must be substituted: in order to do so, the algorithm uses as candidates the pixels of the most populated cluster; the new codeword is picked randomly from this set and the last step is to update all clusters consequently. This step is crucial to understand my implementation of LBG, which can be found in the function \code{LBG.m}: in fact, the algorithm persists on point 2. until no cluster is empty; once all codewords have their assigned pixels, the procedure continues as previously described.
+
+It's important to highlight also the partition strategy that I decided to implement: in general, with LBG we assign to a pixel the \textbf{nearest} codeword, which is the one that provide the smaller distortion. Instead, in \code{LBG.m} a codeword is assigned only if: 
+\begin{equation}
+D_{new} < GD_{old}
+\end{equation}
+where $D_{new}$ is the distortion between the pixel and the new candidate codeword, $D_{old}$ considers the current codeword and \textbf{G} is a design parameter to set at the beginning of the simulation. After different tests, I confirmed that this design choice guarantees that the algorithm doesn't get stuck on situations where one pixel keeps on switching from one cluster to another increasing the number of iterations, and so the execution time, without providing any valuable improvements; in fact in this way one pixel changes cluster only if this operation introduces a considerable gain. The final choice of \textbf{G} is done (as often when dealing with engineering problems) considering a trade-off: also a value too small leads to the problem of coarse approximation (few updates, higher distortion), so we need to find a value that provides fewer iterations but anyway good results. The \textit{standard} LBG can be obtained by setting $G = 1$.
+I've written also the function \code{distortion.m}, in order to speed up time performances.
+To sum up [conviene metterlo o no?]
+
+\section{Results}
+In order to test the algorithm and to evaluate code performances, I used color images from the dataset in \cite{SIPI}; in this dataset all files are of size 256x256 or 512x512, I didn't test higher dimension because the only difference is on the execution time (which of course increases) but not on real coding performances. [FIGURE IMMAGINI] 
+
+\clearpage
+
+\begin{thebibliography}{9}
+		
+	\bibitem{SIPI}
+		\textit{SIPI Image Database},
+		USC, University of Southern California
+	
+\end{thebibliography}
+
 \end{document}

@@ -3,8 +3,9 @@ close all;
 
 % Environment initialization
 
-rate = 8; %[Bit/s]
-filename = 'images/2.tiff';
+rate = 8; %[Bit/pixel]
+cb_size = 2^rate; % codebook size
+filename = 'images/3.tiff';
 
 info = imfinfo(filename);
 width = info.Width;
@@ -15,20 +16,19 @@ x = im2double(reshape(img_original,[], 3));
 
 %% CODEBOOK EVALUATION
 
-cb_size = 2^rate; % codebook size
-
-codebook(:,1) = mean(x(:,1));
-codebook(:,2) = mean(x(:,2));
-codebook(:,3) = mean(x(:,3));
+codebook = mean(x);
 coded_img = ones(size(x,1),1);
 
 j = 2;
-epsilon = 0.1;
-gain = 0.6;
+
+% Parameters set up
+epsilon = 0.001;
+gain = 0.9;
+delta = 0.2;
 
 figure
 for i = 1:log2(cb_size)
-    codebook(j:size(codebook,1)*2,:) = mod(codebook+80/255,1);
+    codebook(j:size(codebook,1)*2,:) = mod(codebook+delta,1);
     [codebook, coded_img] = LBG(x, codebook, coded_img, epsilon, gain);
     j = size(codebook,1) + 1;
 end
@@ -38,26 +38,47 @@ pcshow(im2double(img_original))
 
 %% IMAGE COMPRESSION
 
-new_image = zeros(size(x,1),3);
+compressed_img = zeros(size(x,1),3);
 for i=1:size(x,1)
-    new_image(i,:) = codebook(coded_img(i),:);
+    compressed_img(i,:) = codebook(coded_img(i),:);
 end
 
 %% SHOW PALETTE
 
-imwrite(reshape(codebook,cb_size,1,3),'palette.tiff','tiff');
-palette = imread('palette.tiff'); 
-figure 
-image(palette)
-title('Palette obtained via LBG')
+% [~ ,  idx] = min(codebook,[], 1);
+% cb_workcopy = codebook;
+% ordered_cb = zeros(cb_size,3);
+% idx = idx(3);
+% next = cb_workcopy(idx,:);
+% 
+% for i=1:cb_size
+%     
+%     ordered_cb(i,:) = next;
+%     cb_workcopy(idx,:) = [];
+%     
+%     if i ~= cb_size
+%         distance_vect = sum((repmat(next,size(cb_workcopy,1),1)-cb_workcopy(:,:)).^2,2).^0.5;
+%         [~ ,  idx] = min(distance_vect);
+%         next = cb_workcopy(idx,:);
+%     end
+%     
+% end
+% imwrite(reshape(ordered_cb,cb_size,1,3),'palette.tiff','tiff');
+% %imwrite(reshape(codebook,cb_size,1,3),'palette.tiff','tiff');
+% palette = imread('palette.tiff'); 
+% figure 
+% image(palette)
+% title('Palette obtained via LBG')
 
 %% Compression comparison
 
 imwrite(img_original,'img_jpg.jpeg','jpg','Quality',100);
 img_jpg = imread('img_jpg.jpeg'); 
+info2 = imfinfo('img_jpg.jpeg');
 
-imwrite(reshape(new_image,width,height,3),'img_raw.tiff','tiff');
-img_lbg = imread('img_raw.tiff'); 
+imwrite(reshape(compressed_img,width,height,3),'img_raw.tiff','tiff');
+img_lbg = imread('img_raw.tiff');
+info3 = imfinfo('img_raw.tiff');
 
 fprintf('Distortion between original and JPG: %.3f \n', immse(img_jpg,img_original))
 fprintf('Distortion between original and LBG: %.3f \n', immse(img_lbg,img_original))

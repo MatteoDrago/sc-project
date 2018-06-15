@@ -1,13 +1,11 @@
 function [counter, anyEmpty, clt] = checkAnyEmptyClt(idx, cb_size)
-%UNTITLED2 Summary of this function goes here
-%   Detailed explanation goes here
 
 anyEmpty = false;
 clt_info = tabulate(idx);
 counter = clt_info(:,2);
 
 if size(counter,1) < cb_size
-    trail = zeros(cb_size - size(counter,1),1);
+    trail = zeros(cb_size - size(counter,1),1); % that's only in the case that not all of the empty clusters are spotted 
     counter = [counter; trail];
 end
 
