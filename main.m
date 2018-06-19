@@ -5,7 +5,7 @@ close all;
 
 rate = 8; %[Bit/pixel]
 cb_size = 2^rate; % codebook size
-filename = 'images/3.tiff';
+filename = 'images/1.tiff';
 
 info = imfinfo(filename);
 width = info.Width;
@@ -23,7 +23,7 @@ j = 2;
 
 % Parameters set up
 epsilon = 0.001;
-gain = 0.9;
+gain = 1;
 delta = 0.2;
 
 figure
@@ -45,30 +45,30 @@ end
 
 %% SHOW PALETTE
 
-% [~ ,  idx] = min(codebook,[], 1);
-% cb_workcopy = codebook;
-% ordered_cb = zeros(cb_size,3);
-% idx = idx(3);
-% next = cb_workcopy(idx,:);
-% 
-% for i=1:cb_size
-%     
-%     ordered_cb(i,:) = next;
-%     cb_workcopy(idx,:) = [];
-%     
-%     if i ~= cb_size
-%         distance_vect = sum((repmat(next,size(cb_workcopy,1),1)-cb_workcopy(:,:)).^2,2).^0.5;
-%         [~ ,  idx] = min(distance_vect);
-%         next = cb_workcopy(idx,:);
-%     end
-%     
-% end
-% imwrite(reshape(ordered_cb,cb_size,1,3),'palette.tiff','tiff');
-% %imwrite(reshape(codebook,cb_size,1,3),'palette.tiff','tiff');
-% palette = imread('palette.tiff'); 
-% figure 
-% image(palette)
-% title('Palette obtained via LBG')
+[~ , idx] = min(codebook,[], 1);
+cb_workcopy = codebook;
+ordered_cb = zeros(cb_size,3);
+idx = idx(3);
+next = cb_workcopy(idx,:);
+
+for i=1:cb_size
+    
+    ordered_cb(i,:) = next;
+    cb_workcopy(idx,:) = [];
+    
+    if i ~= cb_size
+        distance_vect = sum((repmat(next,size(cb_workcopy,1),1)-cb_workcopy(:,:)).^2,2).^0.5;
+        [~ ,  idx] = min(distance_vect);
+        next = cb_workcopy(idx,:);
+    end
+    
+end
+imwrite(reshape(ordered_cb,cb_size,1,3),'palette.tiff','tiff');
+%imwrite(reshape(codebook,cb_size,1,3),'palette.tiff','tiff');
+palette = imread('palette.tiff'); 
+figure 
+image(palette)
+title('Palette obtained via LBG')
 
 %% Compression comparison
 
@@ -92,4 +92,8 @@ fprintf('PSNR between original and LBG: %.3f \n', psnr(img_original,img_lbg,255)
 
 img_arr = [img_original img_jpg img_lbg];
 figure
-montage(img_arr)
+imshow(img_original)
+figure
+imshow(img_jpg)
+figure
+imshow(img_lbg)
