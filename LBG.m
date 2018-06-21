@@ -1,5 +1,4 @@
 function [cb, new_idx] = LBG(img, cb, coded_img, epsilon, gain)
-%   LBG Linde-Buzo-Gray algorithm implementation
 
 % initialization of useful variables
 flag = true;
@@ -74,7 +73,7 @@ while flag
         pause(0.01)
     end
 end
-fprintf('Loop run %d times \n', c);
+%fprintf('Loop run %d times \n', c);
 
 new_idx = coded_img;
 end

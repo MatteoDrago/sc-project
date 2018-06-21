@@ -1,11 +1,17 @@
 clear; 
 close all;
 
-% Environment initialization
+%% Environment initialization
 
 rate = 8; %[Bit/pixel]
 cb_size = 2^rate; % codebook size
-filename = 'images/1.tiff';
+filename = '1.tiff';
+
+if ismac
+    filename = ['images/',filename];
+else
+    filename = ['images\',filename];
+end
 
 info = imfinfo(filename);
 width = info.Width;
@@ -26,15 +32,31 @@ epsilon = 0.001;
 gain = 1;
 delta = 0.2;
 
+compressed_img = zeros(size(x,1),3);
+distortion = zeros(log2(cb_size),1);
+psnr_values = zeros(log2(cb_size),1);
+
 figure
 for i = 1:log2(cb_size)
     codebook(j:size(codebook,1)*2,:) = mod(codebook+delta,1);
     [codebook, coded_img] = LBG(x, codebook, coded_img, epsilon, gain);
+    
+    for h=1:size(x,1)
+        compressed_img(h,:) = codebook(coded_img(h,1),:);
+    end
+    
+    imwrite(reshape(compressed_img,width,height,3),sprintf('img_raw_%d.tiff',i),'tiff');
+    img_draft = imread(sprintf('img_raw_%d.tiff',i));
+    distortion(i) = immse(img_draft,img_original);
+    psnr_values(i) =  psnr(img_draft,img_original,255);
+    
     j = size(codebook,1) + 1;
 end
 
 hold on
 pcshow(im2double(img_original))
+title('RGB pixel cloud')
+legend('LBG Codebook', 'Image pixel cloud')
 
 %% IMAGE COMPRESSION
 
@@ -43,7 +65,7 @@ for i=1:size(x,1)
     compressed_img(i,:) = codebook(coded_img(i),:);
 end
 
-%% SHOW PALETTE
+%% SHOW PALETTE - CODEBOOK SORTING
 
 [~ , idx] = min(codebook,[], 1);
 cb_workcopy = codebook;
@@ -63,37 +85,65 @@ for i=1:cb_size
     end
     
 end
-imwrite(reshape(ordered_cb,cb_size,1,3),'palette.tiff','tiff');
-%imwrite(reshape(codebook,cb_size,1,3),'palette.tiff','tiff');
-palette = imread('palette.tiff'); 
+
+palette_img = ones(1,256).*reshape(ordered_cb,cb_size,1,3);
+imwrite(palette_img,'palette.png','png');
+palette = imread('palette.png');
+
 figure 
-image(palette)
+imshow(palette)
 title('Palette obtained via LBG')
 
-%% Compression comparison
+%% Compression Comparison
+
+jpg_rate = zeros(10,1);
+jpg_distortion = zeros(10,1);
+jpg_psnr = zeros(10,1);
+
+for i = 1:10
+    imwrite(img_original,'X.jpeg','jpg','Quality',i*10);
+    xr = imread('X.jpeg');
+    infoxr = imfinfo('X.jpeg');
+    Size = infoxr.FileSize*8;
+
+    jpg_rate(i) = Size/size(x,1);
+    jpg_distortion(i) = immse(xr,img_original);
+    jpg_psnr(i) = psnr(xr,img_original,255);
+end
+
+figure
+plot(log2([2 4 8 16 32 64 128 256]),distortion,'-x','Linewidth',1.5)
+grid on
+hold on
+plot(jpg_rate, jpg_distortion,'-x','Linewidth',2)
+ylabel('Distortion [mse]')
+xlabel('Rate [bit/pixel]')
+legend('LBG', 'JPG','Location','northwest')
+
+figure
+plot(log2([2 4 8 16 32 64 128 256]),psnr_values,'-x','Linewidth',1.5)
+grid on
+hold on
+plot(jpg_rate, jpg_psnr,'-x','Linewidth',2)
+ylabel('PSNR [dB]')
+xlabel('Rate [bit/pixel]')
+legend('LBG', 'JPG','Location','northwest')
+
+%% Image plot
 
 imwrite(img_original,'img_jpg.jpeg','jpg','Quality',100);
-img_jpg = imread('img_jpg.jpeg'); 
-info2 = imfinfo('img_jpg.jpeg');
+img_jpg = imread('img_jpg.jpeg');
 
 imwrite(reshape(compressed_img,width,height,3),'img_raw.tiff','tiff');
 img_lbg = imread('img_raw.tiff');
-info3 = imfinfo('img_raw.tiff');
-
-fprintf('Distortion between original and JPG: %.3f \n', immse(img_jpg,img_original))
-fprintf('Distortion between original and LBG: %.3f \n', immse(img_lbg,img_original))
-%fprintf('Distortion between JPG and LBG: %.3f \n', immse(x_jpg,x_tiff))
-
-fprintf('PSNR between original and JPG: %.3f \n', psnr(img_original,img_jpg,255))
-fprintf('PSNR between original and LBG: %.3f \n', psnr(img_original,img_lbg,255))
-%fprintf('PSNR between JPG and LBG: %.3f \n', psnr(x_jpg,x_tiff,255))
-
-%% Image plot
 
 img_arr = [img_original img_jpg img_lbg];
 figure
 imshow(img_original)
+title('Original image')
 figure
 imshow(img_jpg)
+title('JPG Image')
 figure
 imshow(img_lbg)
+title('Image quantized using LBG')
