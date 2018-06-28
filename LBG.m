@@ -38,7 +38,7 @@ while flag
         plot3(cb(:,1),cb(:,2),cb(:,3),'ko','LineWidth',1.5);
         grid on
         title(['Codebook size: ', num2str(cb_size) ,' Iteration number: ', num2str(c)])
-        pause(0.1);% pause 2/10 second
+        pause(0.2);% pause 2/10 second
         
     end
     
@@ -49,8 +49,8 @@ while flag
     
     plot3(cb(:,1),cb(:,2),cb(:,3),'ko','LineWidth',1.5);
     grid on
-    title(['Codebook size: ', num2str(cb_size) ,' Iteration number: ', num2str(c)])
-    
+    %title(['Codebook size: ', num2str(cb_size) ,' Iteration number: ', num2str(c)])
+    title(['Codebook size: ', num2str(cb_size)])
     new_dst = distortion(img, cb, coded_img); % evaluate new value for the distortion 
     before = mean(dst);
     after = mean(new_dst);

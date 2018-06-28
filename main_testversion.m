@@ -35,11 +35,23 @@ for a = 1:3
     distortion = zeros(log2(cb_size),1);
     psnr_values = zeros(log2(cb_size),1);
 
-    figure
+    l = figure; 
+    axis tight manual
     for i = 1:log2(cb_size)
         codebook(j:size(codebook,1)*2,:) = mod(codebook+delta,1);
         [codebook, coded_img] = LBG(x, codebook, coded_img, epsilon, gain);
+        
+        frame = getframe(l); 
+          im = frame2im(frame); 
+          [imind,cm] = rgb2ind(im,256); 
 
+          % Write to the GIF File 
+          if i == 1 
+              imwrite(imind,cm,'test.gif','gif', 'Loopcount',inf); 
+          else 
+              imwrite(imind,cm,'test.gif','gif','WriteMode','append'); 
+          end 
+        
         for h=1:size(x,1)
             compressed_img(h,:) = codebook(coded_img(h,1),:);
         end

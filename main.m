@@ -5,7 +5,7 @@ close all;
 
 rate = 8; %[Bit/pixel]
 cb_size = 2^rate; % codebook size
-filename = '1.tiff';
+filename = '8.tiff';
 
 if ismac
     filename = ['images/',filename];
@@ -36,17 +36,39 @@ compressed_img = zeros(size(x,1),3);
 distortion = zeros(log2(cb_size),1);
 psnr_values = zeros(log2(cb_size),1);
 
-figure
+l = figure; 
+axis tight manual
 for i = 1:log2(cb_size)
     codebook(j:size(codebook,1)*2,:) = mod(codebook+delta,1);
     [codebook, coded_img] = LBG(x, codebook, coded_img, epsilon, gain);
+    
+    frame = getframe(l); 
+    im = frame2im(frame); 
+    [imind,cm] = rgb2ind(im,256); 
+
+    % Write to the GIF File 
+    if i == 1 
+        imwrite(imind,cm,'test.gif','gif', 'Loopcount',inf); 
+    else 
+        imwrite(imind,cm,'test.gif','gif','WriteMode','append'); 
+    end 
+        
     
     for h=1:size(x,1)
         compressed_img(h,:) = codebook(coded_img(h,1),:);
     end
     
     imwrite(reshape(compressed_img,width,height,3),sprintf('img_raw_%d.tiff',i),'tiff');
+    
     img_draft = imread(sprintf('img_raw_%d.tiff',i));
+    
+    [imind,cm] = rgb2ind(img_draft,256); 
+    if i == 1 
+          imwrite(imind,cm,'test_2.gif','gif', 'Loopcount',inf); 
+    else 
+          imwrite(imind,cm,'test_2.gif','gif','WriteMode','append'); 
+    end
+    
     distortion(i) = immse(img_draft,img_original);
     psnr_values(i) =  psnr(img_draft,img_original,255);
     
@@ -56,6 +78,10 @@ end
 hold on
 pcshow(im2double(img_original))
 title('RGB pixel cloud')
+% frame = getframe(l); 
+% im = frame2im(frame); 
+% [imind,cm] = rgb2ind(im,256);
+% imwrite(imind,cm,'test.gif','gif','WriteMode','append'); 
 legend('LBG Codebook', 'Image pixel cloud')
 
 %% IMAGE COMPRESSION
